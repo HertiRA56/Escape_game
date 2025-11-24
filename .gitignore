@@ -1,0 +1,54 @@
+# Escape Game - Git Ignore
+
+# Vendor directories
+api/vendor/
+node_modules/
+
+# Composer
+composer.phar
+composer.lock
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Database backups
+*.sql.backup
+*.dump
+
+# GeoServer data (too large)
+geoserver/data_dir/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# User uploaded files (if any)
+uploads/
+
+# Docker volumes
+.docker/
+
+# PDF documentation (already in repo)
+# ING2.pdf can stay
+
+# Icon files if too large
+# public/images/icons/*.png
+

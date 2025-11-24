@@ -1,0 +1,201 @@
+<DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Les Joyaux du Louvre - Escape Game</title>
+    
+   
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+       
+        <header class="header">
+            <h1>🏛️ Les Joyaux du Louvre</h1>
+            <div class="timer">⏱️ Temps: {{ tempoFormatado }}</div>
+        </header>
+
+        <div class="container">
+            <div id="map" class="map-container"></div>
+
+         
+            <aside class="sidebar">
+              
+                <div class="panel inventory-panel">
+                    <h2> Inventaire</h2>
+                    <div class="inventory">
+                        <div 
+                            v-if="inventario.length === 0" 
+                            class="empty-inventory"
+                        >
+                            Pas de item colleté encore
+                        </div>
+                        <div 
+                            v-for="item in inventario" 
+                            :key="item.id"
+                            :class="['inventory-item', { 'selected': itemSelecionado?.id === item.id }]"
+                            @click="selecionarItem(item)"
+                        >
+                            <img v-if="item.icone_url" :src="item.icone_url" :alt="item.nom" class="item-icon">
+                            <span class="item-name">{{ item.nom }}</span>
+                            <span v-if="itemSelecionado?.id === item.id" class="selected-badge">✓</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hall of Fame -->
+                <div class="panel hall-of-fame-panel">
+                    <h2>🏆 Hall of Fame</h2>
+                    <div class="hall-of-fame">
+                        <div v-if="topScores.length === 0" class="no-scores">
+                            Pas de score sauvegardé encore
+                        </div>
+                        <ol class="scores-list">
+                            <li v-for="(score, index) in topScores" :key="index" class="score-item">
+                                <span class="rank">{{ index + 1 }}.</span>
+                                <span class="pseudo">{{ score.pseudo }}</span>
+                                <span class="score-value">{{ score.score }} pts</span>
+                                <span class="tempo">{{ score.tempo_formatado }}</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Cheat Mode -->
+                <div class="panel cheat-panel">
+                    <label class="cheat-checkbox">
+                        <input type="checkbox" v-model="modoTrapacea" @change="toggleHeatMap">
+                        <span> Carte de chaleur </span>
+                    </label>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Intro Modal -->
+        <div v-if="mostrarIntro" class="modal-overlay" @click="fecharIntro">
+            <div class="modal intro-modal" @click.stop>
+            	<h2>🚨 Mission : Vol des Joyaux du Louvre</h2>
+				<div class="intro-content">
+    				<p><strong>Lieu :</strong> Prison de Paris</p>
+    				<p>Vous venez de vous échapper de prison ! Il est maintenant temps de réaliser le grand coup.</p>
+  				  	<p><strong>Objectif :</strong> Voler les légendaires <em>Bijoux de Napoléon</em> au Musée du Louvre.</p>
+    				<p><strong>Instructions :</strong></p>
+    				<ol>
+        				<li>Trouvez la <strong>clé de la grue</strong> avec votre partenaire au cimetière</li>
+       					<li>Récupérez le <strong>code de l'alarme</strong> auprès de l'ancien employé à la mairie</li>
+        				<li>Transmettez le code au <strong>hacker</strong> dans le parc près du Panthéon</li>
+        				<li>Rendez-vous au <strong>Louvre</strong> et utilisez la clé sur la grue</li>
+        				<li>Prenez les <strong>Bijoux de Napoléon</strong> et échappez-vous !</li>
+    				</ol>
+    				<p class="warning">⚠️ Le chronomètre commencera dès que vous commencerez. Bonne chance !</p>
+				</div>
+				<button class="btn btn-primary" @click="iniciarJogo">Commencer la mission</button>
+            </div>
+        </div>
+
+        <!-- Code Modal -->
+        <div v-if="modalCodigo.mostrar" class="modal-overlay" @click="fecharModalCodigo">
+            <div class="modal code-modal" @click.stop>
+                <h2>{{ modalCodigo.titulo }}</h2>
+                <div class="modal-content">
+                    <p v-if="modalCodigo.tipo === 'exibir'">
+                        <strong>Código encontrado:</strong>
+                    </p>
+                    <div v-if="modalCodigo.tipo === 'exibir'" class="code-display">
+                        {{ modalCodigo.codigo }}
+                    </div>
+                    
+                    <p v-if="modalCodigo.tipo === 'inserir'">
+                        {{ modalCodigo.indice }}
+                    </p>
+                    <div v-if="modalCodigo.tipo === 'inserir'" class="code-input-container">
+                        <input 
+                            type="text" 
+                            v-model="modalCodigo.codigoInserido"
+                            maxlength="4"
+                            pattern="[0-9]{4}"
+                            class="code-input"
+                            placeholder="****"
+                            @keyup.enter="verificarCodigo"
+                        >
+                        <p v-if="modalCodigo.erro" class="error-message">{{ modalCodigo.erro }}</p>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button v-if="modalCodigo.tipo === 'inserir'" class="btn btn-primary" @click="verificarCodigo">
+                        Verifier
+                    </button>
+                    <button class="btn btn-secondary" @click="fecharModalCodigo">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hint Modal -->
+        <div v-if="modalDica.mostrar" class="modal-overlay" @click="fecharModalDica">
+            <div class="modal hint-modal" @click.stop>
+                <h2>💡 Indice</h2>
+                <div class="modal-content">
+                    <p>{{ modalDica.texto }}</p>
+                    <p v-if="modalDica.objetoNecessario" class="hint-object">
+                        <strong>Vous avez besoin de:</strong> {{ modalDica.objetoNecessario }}
+                    </p>
+                </div>
+                <button class="btn btn-secondary" @click="fecharModalDica">Fermer</button>
+            </div>
+        </div>
+
+        <!-- Victory Modal -->
+        <div v-if="modalVitoria.mostrar" class="modal-overlay">
+            <div class="modal victory-modal" @click.stop>
+                <h2>🎉 Bravo ! Mission accomplie !</h2>
+                <div class="modal-content">
+                    <p class="victory-message">Vous avez réussi à voler les bijoux de Napoléon!</p>
+                    <div class="victory-stats">
+                        <div class="stat">
+                            <span class="stat-label">⏱️ Temps:</span>
+                            <span class="stat-value">{{ modalVitoria.tempoFormatado }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">🏆 Score:</span>
+                            <span class="stat-value">{{ modalVitoria.score }} pontos</span>
+                        </div>
+                    </div>
+                    <div v-if="!modalVitoria.scoreSalvo" class="save-score-form">
+                        <label> Saisissez votre nom:</label>
+                        <input 
+                            type="text" 
+                            v-model="modalVitoria.pseudo"
+                            maxlength="20"
+                            class="pseudo-input"
+                            placeholder="Seu nome"
+                        >
+                        <button class="btn btn-primary" @click="salvarScore">
+                            Sauvegarder Score
+                        </button>
+                    </div>
+                    <div v-if="modalVitoria.scoreSalvo" class="score-saved">
+                        <p>✓ Réussi en sauvegardé le score!</p>
+                        <button class="btn btn-secondary" @click="jogarNovamente">
+                            Rejouer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- App JS -->
+    <script src="js/app.js"></script>
+</body>
+</html>
+

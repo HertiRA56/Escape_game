@@ -1,0 +1,27 @@
+# Escape Game - Apache Configuration
+
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Allow CORS for API requests
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type"
+
+# Redirect API requests to api folder
+RewriteCond %{REQUEST_URI} ^/api
+RewriteRule ^api/(.*)$ api/$1 [L]
+
+# Force HTTPS (uncomment in production)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Prevent directory browsing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(composer\.json|composer\.lock|\.git|\.env)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+

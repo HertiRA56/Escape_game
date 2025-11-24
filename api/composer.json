@@ -1,0 +1,15 @@
+{
+    "name": "escape-game/louvre-api",
+    "description": "REST API pour le Escape Game - Les Joyaux du Louvre",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "mikecao/flight": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "EscapeGame\\": "src/"
+        }
+    }
+}
+
